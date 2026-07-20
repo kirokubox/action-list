@@ -1,0 +1,334 @@
+/* action-list のスタイル。配色はプレースホルダー（正式デザインは後日）。
+   背景 #f2f4f7 / カード白 / アクセント #3a5a80 / 区切り線 #9fb3c8。 */
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif;
+  background: #f2f4f7;
+  color: #2a2f38;
+}
+
+.app {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  max-width: 480px;
+  margin: 0 auto;
+  padding-bottom: 96px; /* 下部の＋追加ボタン分の余白 */
+}
+
+/* ヘッダー */
+.app-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 16px 8px;
+}
+
+.app-title {
+  font-size: 20px;
+  font-weight: 700;
+  margin: 0;
+  color: #3a5a80;
+}
+
+.icon-button {
+  border: none;
+  background: transparent;
+  font-size: 22px;
+  line-height: 1;
+  padding: 8px 12px;
+  border-radius: 8px;
+  color: #3a5a80;
+  cursor: pointer;
+}
+
+.icon-button:active {
+  background: rgba(58, 90, 128, 0.1);
+}
+
+/* リスト */
+.list-container {
+  padding: 8px 12px 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.empty-hint {
+  text-align: center;
+  color: #7a8494;
+  font-size: 14px;
+  padding: 24px 16px;
+  line-height: 1.6;
+}
+
+/* 行の共通スタイル */
+.row {
+  touch-action: pan-y; /* 縦スクロールはブラウザ、横ジェスチャは自前スワイプへ */
+  user-select: none;
+  will-change: transform;
+}
+
+.row-dragging {
+  opacity: 0.85;
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.15);
+  z-index: 1;
+}
+
+/* 項目カード */
+.row-card {
+  background: #ffffff;
+  border-radius: 10px;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.06);
+}
+
+.card-inner {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 14px 16px;
+}
+
+.card-title {
+  flex: 1;
+  font-size: 15px;
+  line-height: 1.5;
+  word-break: break-word;
+}
+
+.badge-single {
+  flex-shrink: 0;
+  font-size: 11px;
+  color: #3a5a80;
+  background: rgba(58, 90, 128, 0.12);
+  border-radius: 999px;
+  padding: 2px 8px;
+}
+
+/* 区切り行（あとで） */
+.row-divider {
+  padding: 10px 4px;
+}
+
+.divider-inner {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.divider-handle {
+  color: #9fb3c8;
+  font-size: 14px;
+  letter-spacing: -2px;
+  cursor: grab;
+}
+
+.divider-line {
+  flex: 1;
+  height: 1px;
+  background: #9fb3c8;
+}
+
+.divider-label {
+  font-size: 12px;
+  color: #9fb3c8;
+  white-space: nowrap;
+}
+
+/* ＋ 追加ボタン */
+.fab-add {
+  position: fixed;
+  left: 50%;
+  bottom: 20px;
+  transform: translateX(-50%);
+  background: #3a5a80;
+  color: #ffffff;
+  border: none;
+  border-radius: 999px;
+  padding: 14px 28px;
+  font-size: 15px;
+  font-weight: 600;
+  box-shadow: 0 4px 12px rgba(58, 90, 128, 0.35);
+  cursor: pointer;
+}
+
+.fab-add:active {
+  background: #2f4a68;
+}
+
+/* 追加フォーム（下からのシート） */
+.sheet-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(20, 25, 33, 0.35);
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  z-index: 10;
+}
+
+.sheet {
+  width: 100%;
+  max-width: 480px;
+  background: #ffffff;
+  border-radius: 16px 16px 0 0;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.sheet-title {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 700;
+  color: #2a2f38;
+}
+
+.sheet-input {
+  font-size: 15px;
+  padding: 12px 14px;
+  border: 1px solid #d8dee6;
+  border-radius: 8px;
+  background: #f9fafb;
+}
+
+.segmented {
+  display: flex;
+  border: 1px solid #d8dee6;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.segment {
+  flex: 1;
+  padding: 10px 0;
+  border: none;
+  background: #ffffff;
+  color: #5a6474;
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.segment-active {
+  background: #3a5a80;
+  color: #ffffff;
+}
+
+.sheet-actions {
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+}
+
+.btn-secondary,
+.btn-primary {
+  padding: 10px 18px;
+  border-radius: 8px;
+  border: none;
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.btn-secondary {
+  background: #eef1f5;
+  color: #5a6474;
+}
+
+.btn-primary {
+  background: #3a5a80;
+  color: #ffffff;
+}
+
+.btn-primary:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* メニューパネル（⋯） */
+.menu-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 10;
+}
+
+.menu-panel {
+  position: absolute;
+  top: 56px;
+  right: 16px;
+  background: #ffffff;
+  border-radius: 10px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  min-width: 180px;
+}
+
+.menu-item {
+  padding: 12px 16px;
+  border: none;
+  background: #ffffff;
+  text-align: left;
+  font-size: 14px;
+  color: #2a2f38;
+  cursor: pointer;
+}
+
+.menu-item:active {
+  background: #f2f4f7;
+}
+
+.hidden-file-input {
+  display: none;
+}
+
+/* スナックバー */
+.snackbar-wrap {
+  position: fixed;
+  left: 50%;
+  bottom: 88px;
+  transform: translateX(-50%);
+  width: calc(100% - 32px);
+  max-width: 440px;
+  z-index: 20;
+}
+
+.snackbar {
+  background: #2a2f38;
+  color: #ffffff;
+  border-radius: 10px;
+  padding: 12px 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.25);
+}
+
+.snackbar-text {
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.snackbar-action {
+  flex-shrink: 0;
+  background: transparent;
+  border: none;
+  color: #9fc0e8;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  padding: 4px 6px;
+}
