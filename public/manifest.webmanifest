@@ -1,6 +1,6 @@
 {
-  "name": "action-list",
-  "short_name": "action-list",
+  "name": "action-order",
+  "short_name": "action-order",
   "description": "次やる順番だけを並べ替えるリスト",
   "start_url": ".",
   "scope": ".",

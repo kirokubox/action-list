@@ -145,7 +145,7 @@ export default function App() {
   return (
     <div className="app">
       <header className="app-header">
-        <h1 className="app-title">action-list</h1>
+        <h1 className="app-title">action-order</h1>
         <button
           type="button"
           className="icon-button"
