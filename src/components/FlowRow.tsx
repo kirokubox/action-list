@@ -1,7 +1,7 @@
 import { useRef, useState, type CSSProperties, type PointerEvent as ReactPointerEvent } from "react";
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { ActionItem, ListItem, isDivider } from "../types";
+import { FlowItem } from "../types";
 
 // スワイプの発火しきい値。横移動が約72px以上、かつ |dx| > |dy|×1.5 のときだけ発火する。
 const SWIPE_THRESHOLD = 72;
@@ -10,38 +10,38 @@ const SWIPE_RATIO = 1.5;
 const AXIS_LOCK_DISTANCE = 10;
 
 type Props = {
-  item: ListItem;
-  onSwipeRight: (id: string) => void;
-  onSwipeLeftRepeat: (item: ActionItem) => void;
-  onSwipeLeftDelete: (item: ActionItem) => void;
+  item: FlowItem;
+  order: number;
+  onRemove: (item: FlowItem) => void;
 };
 
 type PointerState = {
   startX: number;
   startY: number;
-  pointerId: number;
   axis: "none" | "x" | "y";
 };
 
 /**
- * 1行分のカード（項目 or 区切り）。
- * - dnd-kit の useSortable で長押しドラッグ（並べ替え）に対応
- * - 自前の pointer イベントで横スワイプ（スキップ / 繰り返し完了 / 削除）に対応
- * dnd-kit のドラッグがアクティブな間はスワイプを無効化する。
+ * 左側「今回の流れ」1行。
+ * - 長押し（約250ms）ドラッグで並べ替え（dnd-kit）
+ * - 左右どちらの横スワイプでも「今回の流れから外す」（定番メニューには残る）
+ *
+ * スワイプに「末尾へ送る」等の便利機能は持たせない。便利すぎるとドラッグを使わなくなり、
+ * 並べ替えアプリとしての本体操作が使われなくなることを実利用で確認しているため。
  */
-export function SortableRow({ item, onSwipeRight, onSwipeLeftRepeat, onSwipeLeftDelete }: Props) {
+export function FlowRow({ item, order, onRemove }: Props) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: item.id });
 
   const [translateX, setTranslateX] = useState(0);
   const [swiping, setSwiping] = useState(false);
   const pointerState = useRef<PointerState | null>(null);
 
-  const divider = isDivider(item);
-
   const dragTransform = transform ? CSS.Transform.toString(transform) : "";
+  const swipeProgress = Math.min(Math.abs(translateX) / SWIPE_THRESHOLD, 1);
   const style: CSSProperties = {
     transform: [dragTransform, translateX ? `translateX(${translateX}px)` : ""].filter(Boolean).join(" ") || undefined,
     transition: swiping ? "none" : transition,
+    opacity: swiping ? 1 - swipeProgress * 0.45 : undefined,
   };
 
   function resetSwipe() {
@@ -51,20 +51,18 @@ export function SortableRow({ item, onSwipeRight, onSwipeLeftRepeat, onSwipeLeft
   }
 
   function handlePointerDown(e: ReactPointerEvent<HTMLDivElement>) {
-    if (!divider) {
-      pointerState.current = { startX: e.clientX, startY: e.clientY, pointerId: e.pointerId, axis: "none" };
-      try {
-        e.currentTarget.setPointerCapture(e.pointerId);
-      } catch {
-        // 一部環境で setPointerCapture が失敗しても致命的ではないので無視する
-      }
+    pointerState.current = { startX: e.clientX, startY: e.clientY, axis: "none" };
+    try {
+      e.currentTarget.setPointerCapture(e.pointerId);
+    } catch {
+      // 一部環境で setPointerCapture が失敗しても致命的ではないので無視する
     }
     // dnd-kit の長押し判定（250ms）も同時に開始させる
     listeners?.onPointerDown?.(e);
   }
 
   function handlePointerMove(e: ReactPointerEvent<HTMLDivElement>) {
-    if (divider || !pointerState.current) return;
+    if (!pointerState.current) return;
     if (isDragging) {
       // dnd-kit のドラッグが発火したらスワイプ側は諦めて位置を戻す
       resetSwipe();
@@ -86,7 +84,7 @@ export function SortableRow({ item, onSwipeRight, onSwipeLeftRepeat, onSwipeLeft
   }
 
   function handlePointerUp(e: ReactPointerEvent<HTMLDivElement>) {
-    if (divider || !pointerState.current) return;
+    if (!pointerState.current) return;
     const { startX, startY, axis } = pointerState.current;
     const dx = e.clientX - startX;
     const dy = e.clientY - startY;
@@ -95,21 +93,14 @@ export function SortableRow({ item, onSwipeRight, onSwipeLeftRepeat, onSwipeLeft
     if (isDragging) return; // ドラッグ確定後はスワイプを発火させない
 
     if (axis === "x" && Math.abs(dx) >= SWIPE_THRESHOLD && Math.abs(dx) > Math.abs(dy) * SWIPE_RATIO) {
-      const actionItem = item as ActionItem;
-      if (dx > 0) {
-        onSwipeRight(actionItem.id);
-      } else if (actionItem.isSingle) {
-        onSwipeLeftDelete(actionItem);
-      } else {
-        onSwipeLeftRepeat(actionItem);
-      }
+      onRemove(item);
     }
   }
 
   return (
     <div
       ref={setNodeRef}
-      className={`row ${divider ? "row-divider" : "row-card"} ${isDragging ? "row-dragging" : ""}`}
+      className={`flow-row ${isDragging ? "flow-row-dragging" : ""}`}
       style={style}
       {...attributes}
       onPointerDown={handlePointerDown}
@@ -117,19 +108,10 @@ export function SortableRow({ item, onSwipeRight, onSwipeLeftRepeat, onSwipeLeft
       onPointerUp={handlePointerUp}
       onPointerCancel={handlePointerUp}
     >
-      {divider ? (
-        <div className="divider-inner">
-          <span className="divider-handle" aria-hidden="true">⋮⋮</span>
-          <span className="divider-line" />
-          <span className="divider-label">あとで</span>
-          <span className="divider-line" />
-        </div>
-      ) : (
-        <div className="card-inner">
-          <span className="card-title">{(item as ActionItem).title}</span>
-          {(item as ActionItem).isSingle && <span className="badge-single">単発</span>}
-        </div>
-      )}
+      <span className="flow-order" aria-hidden="true">
+        {order}
+      </span>
+      <span className="flow-title">{item.title}</span>
     </div>
   );
 }

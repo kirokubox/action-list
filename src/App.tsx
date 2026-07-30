@@ -1,28 +1,23 @@
 import { useEffect, useRef, useState } from "react";
+import { FlowItem, MenuItem } from "./types";
+import { load, save } from "./storage";
+import { SAMPLE_MENU } from "./sampleMenu";
+import { flowItemFromMenu, insertFlowAt, removeFlowItem, restoreFlowAt } from "./flowOps";
 import {
-  DndContext,
-  PointerSensor,
-  closestCenter,
-  useSensor,
-  useSensors,
-  type DragEndEvent,
-} from "@dnd-kit/core";
-import { SortableContext, arrayMove, verticalListSortingStrategy } from "@dnd-kit/sortable";
-import { ActionItem, ListItem } from "./types";
-import { loadItems, saveItems } from "./storage";
-import {
-  additiveImport,
-  insertAboveDivider,
-  insertBelowDivider,
-  moveAboveDivider,
-  removeWithIndex,
-  reorderAll,
-  restoreAt,
-} from "./listOps";
-import { notifyRepeatCompleted } from "./repeatHook";
-import { SortableRow } from "./components/SortableRow";
-import { AddForm } from "./components/AddForm";
-import { MenuPanel } from "./components/MenuPanel";
+  additiveMenuImport,
+  appendMenuItem,
+  extractMenuSource,
+  newMenuItem,
+  removeMenuItem,
+  renameMenuItem,
+  restoreMenuItemAt,
+} from "./menuOps";
+import { FlowColumn } from "./components/FlowColumn";
+import { MenuColumn } from "./components/MenuColumn";
+import { InsertPositionSheet } from "./components/InsertPositionSheet";
+import { MenuEditSheet } from "./components/MenuEditSheet";
+import { ConfirmSheet } from "./components/ConfirmSheet";
+import { HeaderMenu } from "./components/HeaderMenu";
 import { Snackbar } from "./components/Snackbar";
 
 type ToastState = {
@@ -31,6 +26,9 @@ type ToastState = {
   actionLabel?: string;
   onAction?: () => void;
 };
+
+/** 定番メニュー編集シートの状態。target=null は新規追加。 */
+type EditState = { target: MenuItem | null };
 
 function todayLocalDate(): string {
   const now = new Date();
@@ -41,20 +39,29 @@ function todayLocalDate(): string {
 }
 
 export default function App() {
-  const [items, setItems] = useState<ListItem[]>(() => loadItems());
-  const [addOpen, setAddOpen] = useState(false);
-  const [menuOpen, setMenuOpen] = useState(false);
+  const [initial] = useState(load);
+  const [menu, setMenu] = useState<MenuItem[]>(initial.menu);
+  const [flow, setFlow] = useState<FlowItem[]>(initial.flow);
+
+  const [editing, setEditing] = useState(false);
+  const [pickTarget, setPickTarget] = useState<MenuItem | null>(null);
+  const [editState, setEditState] = useState<EditState | null>(null);
+  const [resetConfirmOpen, setResetConfirmOpen] = useState(false);
+  const [headerMenuOpen, setHeaderMenuOpen] = useState(false);
   const [toast, setToast] = useState<ToastState | null>(null);
   const toastTimerRef = useRef<number | undefined>(undefined);
 
-  // 長押し（約250ms）でドラッグ発火。軽いタップ・スクロールでは発火しない。
-  const sensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { delay: 250, tolerance: 8 } }),
-  );
-
   useEffect(() => {
-    saveItems(items);
-  }, [items]);
+    save(menu, flow);
+  }, [menu, flow]);
+
+  // v1（1列リスト＋区切り）から移行したときだけ、何が起きたかを一度だけ知らせる
+  useEffect(() => {
+    if (initial.migrated) {
+      showToast("これまでの項目を右の定番メニューへ移しました", 6000);
+    }
+    // 初回マウント時だけ実行する（初期読み込み結果は再取得しない）
+  }, []);
 
   function showToast(text: string, durationMs: number, actionLabel?: string, onAction?: () => void) {
     if (toastTimerRef.current) window.clearTimeout(toastTimerRef.current);
@@ -65,73 +72,106 @@ export default function App() {
     }, durationMs);
   }
 
-  function handleDragEnd(event: DragEndEvent) {
-    const { active, over } = event;
-    if (!over || active.id === over.id) return;
-    setItems((prev) => {
-      const oldIndex = prev.findIndex((item) => item.id === active.id);
-      const newIndex = prev.findIndex((item) => item.id === over.id);
-      if (oldIndex === -1 || newIndex === -1) return prev;
-      return reorderAll(arrayMove(prev, oldIndex, newIndex));
-    });
+  // ---- 右側 → 左側への追加 ----
+
+  /** 定番メニューをタップ。流れが空なら位置を選ぶ必要がないのでそのまま追加する。 */
+  function handlePick(item: MenuItem) {
+    if (flow.length === 0) {
+      setFlow([flowItemFromMenu(item)]);
+      showToast(`「${item.title}」を追加しました`, 2500);
+      return;
+    }
+    setPickTarget(item);
   }
 
-  // 右スワイプ（全項目）＝ スキップ：区切りの直上（「これから」ゾーン最下部）へ移動
-  function handleSwipeRight(id: string) {
-    setItems(moveAboveDivider(items, id));
+  function handleInsertAt(index: number) {
+    if (!pickTarget) return;
+    setFlow((current) => insertFlowAt(current, flowItemFromMenu(pickTarget), index));
+    setPickTarget(null);
   }
 
-  // 左スワイプ（繰り返し項目）：区切りの直下へ挿入し、将来のかぞえ帳連携フックを経由させる
-  function handleSwipeLeftRepeat(item: ActionItem) {
-    setItems(insertBelowDivider(items, item.id));
-    notifyRepeatCompleted(item);
-  }
+  // ---- 左側の操作 ----
 
-  // 左スワイプ（単発項目）＝ 削除＋アンドゥ
-  function handleSwipeLeftDelete(item: ActionItem) {
-    const result = removeWithIndex(items, item.id);
+  /** 横スワイプ＝今回の流れから外す。定番メニューには残る。 */
+  function handleRemoveFromFlow(item: FlowItem) {
+    const result = removeFlowItem(flow, item.id);
     if (!result) return;
-    const { removed, index } = result;
-    setItems(result.items);
-    showToast(`「${removed.title}」を削除しました`, 5000, "元に戻す", () => {
-      setItems((current) => restoreAt(current, removed, index));
+    setFlow(result.flow);
+    showToast(`「${result.removed.title}」を流れから外しました`, 5000, "元に戻す", () => {
+      setFlow((current) => restoreFlowAt(current, result.removed, result.index));
     });
   }
 
-  function handleAdd(title: string, isSingle: boolean) {
-    const newItem: ActionItem = { id: crypto.randomUUID(), title, isSingle };
-    setItems(insertAboveDivider(items, newItem));
-    setAddOpen(false);
+  function handleResetFlow() {
+    const previous = flow;
+    setFlow([]);
+    setResetConfirmOpen(false);
+    showToast("今回の流れを空にしました", 5000, "元に戻す", () => setFlow(previous));
+  }
+
+  // ---- 定番メニューの管理 ----
+
+  function handleSaveMenuItem(title: string) {
+    if (!editState) return;
+    if (editState.target) {
+      setMenu((current) => renameMenuItem(current, editState.target!.id, title));
+    } else {
+      setMenu((current) => appendMenuItem(current, newMenuItem(title)));
+    }
+    setEditState(null);
+  }
+
+  function handleDeleteMenuItem() {
+    const target = editState?.target;
+    if (!target) return;
+    const result = removeMenuItem(menu, target.id);
+    setEditState(null);
+    if (!result) return;
+    setMenu(result.menu);
+    showToast(`「${result.removed.title}」を定番から削除しました`, 5000, "元に戻す", () => {
+      setMenu((current) => restoreMenuItemAt(current, result.removed, result.index));
+    });
+  }
+
+  function handleAddSample() {
+    const result = additiveMenuImport(menu, SAMPLE_MENU);
+    setMenu(result.menu);
+    showToast(
+      result.addedCount === 0
+        ? "追加できるサンプル項目はありませんでした"
+        : `サンプル${result.addedCount}件を追加しました（同名${result.skippedCount}件はそのまま）`,
+      4000,
+    );
   }
 
   function handleExport() {
     const data = {
-      app: "action-list",
-      version: 1,
+      app: "action-order",
+      version: 2,
       exportedAt: new Date().toISOString(),
-      items,
+      menu,
     };
     const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = `action-list-backup-${todayLocalDate()}.json`;
+    a.download = `action-order-menu-${todayLocalDate()}.json`;
     a.click();
     URL.revokeObjectURL(url);
   }
 
+  /** 追加型インポート。既存の定番メニューは消さない。v1バックアップ・旧シードJSONも受け付ける。 */
   function handleImportFile(file: File) {
     const reader = new FileReader();
     reader.onload = () => {
       try {
-        const parsed = JSON.parse(String(reader.result));
-        const rawItems = Array.isArray(parsed?.items) ? parsed.items : null;
-        if (!rawItems) {
+        const source = extractMenuSource(JSON.parse(String(reader.result)));
+        if (!source) {
           showToast("JSONの読み込みに失敗しました", 4000);
           return;
         }
-        const result = additiveImport(items, rawItems);
-        setItems(result.items);
+        const result = additiveMenuImport(menu, source);
+        setMenu(result.menu);
         showToast(`${result.addedCount}件追加しました（重複${result.skippedCount}件はスキップ）`, 4000);
       } catch {
         showToast("JSONの読み込みに失敗しました", 4000);
@@ -140,8 +180,6 @@ export default function App() {
     reader.readAsText(file);
   }
 
-  const isEmpty = items.length === 1;
-
   return (
     <div className="app">
       <header className="app-header">
@@ -149,39 +187,63 @@ export default function App() {
         <button
           type="button"
           className="icon-button"
-          onClick={() => setMenuOpen(true)}
+          onClick={() => setHeaderMenuOpen(true)}
           aria-label="メニューを開く"
         >
           ⋯
         </button>
       </header>
 
-      <main className="list-container">
-        {isEmpty && (
-          <p className="empty-hint">右上メニューからJSONを取り込むか、＋で項目を追加してください</p>
-        )}
-        <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
-          <SortableContext items={items.map((item) => item.id)} strategy={verticalListSortingStrategy}>
-            {items.map((item) => (
-              <SortableRow
-                key={item.id}
-                item={item}
-                onSwipeRight={handleSwipeRight}
-                onSwipeLeftRepeat={handleSwipeLeftRepeat}
-                onSwipeLeftDelete={handleSwipeLeftDelete}
-              />
-            ))}
-          </SortableContext>
-        </DndContext>
+      <main className="columns">
+        <FlowColumn
+          flow={flow}
+          onReorder={setFlow}
+          onRemove={handleRemoveFromFlow}
+          onReset={() => setResetConfirmOpen(true)}
+        />
+        <MenuColumn
+          menu={menu}
+          editing={editing}
+          onToggleEditing={() => setEditing((current) => !current)}
+          onPick={handlePick}
+          onEdit={(item) => setEditState({ target: item })}
+          onAdd={() => setEditState({ target: null })}
+          onReorder={setMenu}
+        />
       </main>
 
-      <button type="button" className="fab-add" onClick={() => setAddOpen(true)}>
-        ＋ 追加
-      </button>
-
-      {addOpen && <AddForm onAdd={handleAdd} onClose={() => setAddOpen(false)} />}
-      {menuOpen && (
-        <MenuPanel onExport={handleExport} onImportFile={handleImportFile} onClose={() => setMenuOpen(false)} />
+      {pickTarget && (
+        <InsertPositionSheet
+          title={pickTarget.title}
+          flow={flow}
+          onSelect={handleInsertAt}
+          onClose={() => setPickTarget(null)}
+        />
+      )}
+      {editState && (
+        <MenuEditSheet
+          target={editState.target}
+          onSave={handleSaveMenuItem}
+          onDelete={editState.target ? handleDeleteMenuItem : undefined}
+          onClose={() => setEditState(null)}
+        />
+      )}
+      {resetConfirmOpen && (
+        <ConfirmSheet
+          title="今回の流れを空にします"
+          body="右の定番メニューは消えません。"
+          confirmLabel="空にする"
+          onConfirm={handleResetFlow}
+          onClose={() => setResetConfirmOpen(false)}
+        />
+      )}
+      {headerMenuOpen && (
+        <HeaderMenu
+          onAddSample={handleAddSample}
+          onExport={handleExport}
+          onImportFile={handleImportFile}
+          onClose={() => setHeaderMenuOpen(false)}
+        />
       )}
       {toast && (
         <div className="snackbar-wrap">

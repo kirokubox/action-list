@@ -1,5 +1,6 @@
-/* action-list のスタイル。配色はプレースホルダー（正式デザインは後日）。
-   背景 #f2f4f7 / カード白 / アクセント #3a5a80 / 区切り線 #9fb3c8。 */
+/* action-order のスタイル。配色はプレースホルダー（正式デザインは後日）。
+   背景 #f2f4f7 / カード白 / アクセント #3a5a80。
+   スマホ2列構成（左=今回の流れ 65% / 右=定番メニュー 35%）を前提にしている。 */
 
 * {
   box-sizing: border-box;
@@ -16,27 +17,30 @@ body {
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif;
   background: #f2f4f7;
   color: #2a2f38;
+  /* 2列それぞれが内部スクロールするので、ページ全体はスクロールさせない */
+  overflow: hidden;
 }
 
 .app {
-  min-height: 100vh;
+  height: 100vh;
+  height: 100dvh;
   display: flex;
   flex-direction: column;
-  max-width: 480px;
+  max-width: 560px;
   margin: 0 auto;
-  padding-bottom: 96px; /* 下部の＋追加ボタン分の余白 */
 }
 
 /* ヘッダー */
 .app-header {
+  flex-shrink: 0;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 16px 16px 8px;
+  padding: 10px 10px 4px;
 }
 
 .app-title {
-  font-size: 20px;
+  font-size: 18px;
   font-weight: 700;
   margin: 0;
   color: #3a5a80;
@@ -57,117 +61,203 @@ body {
   background: rgba(58, 90, 128, 0.1);
 }
 
-/* リスト */
-.list-container {
-  padding: 8px 12px 24px;
+/* 2列レイアウト。右列は狭くなりすぎないよう最小幅を確保する */
+.columns {
+  flex: 1;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 65fr) minmax(116px, 35fr);
+  gap: 6px;
+  padding: 0 8px;
+}
+
+.column {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  min-height: 0;
+  min-width: 0;
+}
+
+.column-head {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 4px;
+  padding: 2px 2px 6px;
+}
+
+.column-title {
+  margin: 0;
+  font-size: 12px;
+  font-weight: 700;
+  color: #5a6474;
+  white-space: nowrap;
+}
+
+.column-action {
+  flex-shrink: 0;
+  min-height: 30px;
+  padding: 6px 10px;
+  border: 1px solid #cfd8e3;
+  border-radius: 999px;
+  background: #ffffff;
+  color: #3a5a80;
+  font-family: inherit;
+  font-size: 11px;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.column-action:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.column-action-on {
+  background: #3a5a80;
+  border-color: #3a5a80;
+  color: #ffffff;
+}
+
+.column-body {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  /* 下端のスナックバーと最後の項目が重ならないための余白 */
+  padding: 0 2px 48px;
+}
+
+.column-note {
+  margin: 6px 2px 0;
+  font-size: 10px;
+  line-height: 1.5;
+  color: #9fb3c8;
 }
 
 .empty-hint {
+  margin: 0;
   text-align: center;
   color: #7a8494;
-  font-size: 14px;
-  padding: 24px 16px;
-  line-height: 1.6;
+  font-size: 13px;
+  line-height: 1.7;
+  padding: 28px 8px;
 }
 
-/* 行の共通スタイル */
-.row {
+/* 左列：今回の流れ */
+.flow-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: #ffffff;
+  border-radius: 10px;
+  padding: 12px 12px;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.06);
   touch-action: pan-y; /* 縦スクロールはブラウザ、横ジェスチャは自前スワイプへ */
   user-select: none;
   will-change: transform;
 }
 
-.row-dragging {
+.flow-row-dragging {
   opacity: 0.85;
   box-shadow: 0 6px 16px rgba(0, 0, 0, 0.15);
   z-index: 1;
 }
 
-/* 項目カード */
-.row-card {
-  background: #ffffff;
-  border-radius: 10px;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.06);
+.flow-order {
+  flex-shrink: 0;
+  min-width: 14px;
+  text-align: right;
+  font-size: 11px;
+  color: #9fb3c8;
+  font-variant-numeric: tabular-nums;
 }
 
-.card-inner {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 14px 16px;
-}
-
-.card-title {
+.flow-title {
   flex: 1;
+  min-width: 0;
   font-size: 15px;
-  line-height: 1.5;
+  line-height: 1.45;
   word-break: break-word;
 }
 
-.badge-single {
-  flex-shrink: 0;
-  font-size: 11px;
-  color: #3a5a80;
-  background: rgba(58, 90, 128, 0.12);
-  border-radius: 999px;
-  padding: 2px 8px;
-}
-
-/* 区切り行（あとで） */
-.row-divider {
-  padding: 10px 4px;
-}
-
-.divider-inner {
+/* 右列：定番メニュー（縦幅を取りすぎないコンパクトな行） */
+.menu-row {
   display: flex;
   align-items: center;
-  gap: 8px;
-}
-
-.divider-handle {
-  color: #9fb3c8;
-  font-size: 14px;
-  letter-spacing: -2px;
-  cursor: grab;
-}
-
-.divider-line {
-  flex: 1;
-  height: 1px;
-  background: #9fb3c8;
-}
-
-.divider-label {
-  font-size: 12px;
-  color: #9fb3c8;
-  white-space: nowrap;
-}
-
-/* ＋ 追加ボタン */
-.fab-add {
-  position: fixed;
-  left: 50%;
-  bottom: 20px;
-  transform: translateX(-50%);
-  background: #3a5a80;
-  color: #ffffff;
+  gap: 4px;
+  width: 100%;
+  min-height: 38px;
+  padding: 8px;
   border: none;
-  border-radius: 999px;
-  padding: 14px 28px;
-  font-size: 15px;
-  font-weight: 600;
-  box-shadow: 0 4px 12px rgba(58, 90, 128, 0.35);
+  border-radius: 8px;
+  background: #ffffff;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+  color: #2a2f38;
+  font-family: inherit;
+  text-align: left;
+  touch-action: pan-y;
+  user-select: none;
   cursor: pointer;
 }
 
-.fab-add:active {
-  background: #2f4a68;
+.menu-row:active {
+  background: #eaf1f9;
 }
 
-/* 追加フォーム（下からのシート） */
+.menu-row-editing {
+  background: #fffdf4;
+  box-shadow: inset 0 0 0 1px #e0d5ae;
+}
+
+.menu-row-dragging {
+  opacity: 0.85;
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.15);
+  z-index: 1;
+}
+
+.menu-row-handle {
+  flex-shrink: 0;
+  color: #bfae7d;
+  font-size: 11px;
+  letter-spacing: -2px;
+}
+
+/* 名称は2行までで省略。全文は編集シートの入力欄で確認できる */
+.menu-row-title {
+  flex: 1;
+  min-width: 0;
+  font-size: 12.5px;
+  line-height: 1.35;
+  word-break: break-word;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.menu-add-row {
+  width: 100%;
+  min-height: 38px;
+  padding: 8px;
+  border: 1px dashed #c3cfdd;
+  border-radius: 8px;
+  background: transparent;
+  color: #5a7fa8;
+  font-family: inherit;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.menu-add-row:active {
+  background: rgba(58, 90, 128, 0.06);
+}
+
+/* シート（下から出るモーダル） */
 .sheet-overlay {
   position: fixed;
   inset: 0;
@@ -180,50 +270,43 @@ body {
 
 .sheet {
   width: 100%;
-  max-width: 480px;
+  max-width: 560px;
   background: #ffffff;
   border-radius: 16px 16px 0 0;
-  padding: 20px;
+  padding: 18px 16px calc(18px + env(safe-area-inset-bottom));
   display: flex;
   flex-direction: column;
-  gap: 14px;
+  gap: 12px;
+}
+
+.sheet-tall {
+  max-height: 82vh;
+  max-height: 82dvh;
 }
 
 .sheet-title {
+  flex-shrink: 0;
   margin: 0;
-  font-size: 16px;
+  font-size: 15px;
   font-weight: 700;
   color: #2a2f38;
+  line-height: 1.5;
+}
+
+.sheet-body {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.6;
+  color: #5a6474;
 }
 
 .sheet-input {
-  font-size: 15px;
+  font-size: 16px; /* iOSで入力時にズームされないよう16px以上にする */
   padding: 12px 14px;
   border: 1px solid #d8dee6;
   border-radius: 8px;
   background: #f9fafb;
-}
-
-.segmented {
-  display: flex;
-  border: 1px solid #d8dee6;
-  border-radius: 8px;
-  overflow: hidden;
-}
-
-.segment {
-  flex: 1;
-  padding: 10px 0;
-  border: none;
-  background: #ffffff;
-  color: #5a6474;
-  font-size: 14px;
-  cursor: pointer;
-}
-
-.segment-active {
-  background: #3a5a80;
-  color: #ffffff;
+  font-family: inherit;
 }
 
 .sheet-actions {
@@ -232,11 +315,19 @@ body {
   justify-content: flex-end;
 }
 
+.sheet-actions-split {
+  align-items: center;
+  justify-content: space-between;
+}
+
 .btn-secondary,
-.btn-primary {
+.btn-primary,
+.btn-danger {
+  min-height: 42px;
   padding: 10px 18px;
   border-radius: 8px;
   border: none;
+  font-family: inherit;
   font-size: 14px;
   cursor: pointer;
 }
@@ -256,6 +347,60 @@ body {
   cursor: not-allowed;
 }
 
+.btn-danger {
+  background: transparent;
+  color: #a8474c;
+  padding: 10px 4px;
+}
+
+/* 挿入位置の選択 */
+.insert-list {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  display: flex;
+  flex-direction: column;
+  padding: 2px 0;
+}
+
+.insert-slot {
+  width: 100%;
+  min-height: 44px;
+  margin: 5px 0;
+  border: none;
+  border-radius: 8px;
+  background: #eaf1f9;
+  color: #3a5a80;
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.insert-slot:active {
+  background: #d7e5f3;
+}
+
+.insert-slot-edge {
+  background: #3a5a80;
+  color: #ffffff;
+}
+
+.insert-slot-edge:active {
+  background: #2f4a68;
+}
+
+.insert-peek {
+  padding: 9px 12px;
+  border-radius: 8px;
+  background: #f4f6f9;
+  color: #5a6474;
+  font-size: 13px;
+  line-height: 1.4;
+  word-break: break-word;
+}
+
 /* メニューパネル（⋯） */
 .menu-overlay {
   position: fixed;
@@ -265,22 +410,23 @@ body {
 
 .menu-panel {
   position: absolute;
-  top: 56px;
-  right: 16px;
+  top: 48px;
+  right: 12px;
   background: #ffffff;
   border-radius: 10px;
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  min-width: 180px;
+  min-width: 200px;
 }
 
 .menu-item {
-  padding: 12px 16px;
+  padding: 13px 16px;
   border: none;
   background: #ffffff;
   text-align: left;
+  font-family: inherit;
   font-size: 14px;
   color: #2a2f38;
   cursor: pointer;
@@ -298,10 +444,10 @@ body {
 .snackbar-wrap {
   position: fixed;
   left: 50%;
-  bottom: 88px;
+  bottom: calc(16px + env(safe-area-inset-bottom));
   transform: translateX(-50%);
-  width: calc(100% - 32px);
-  max-width: 440px;
+  width: calc(100% - 24px);
+  max-width: 520px;
   z-index: 20;
 }
 
@@ -327,6 +473,7 @@ body {
   background: transparent;
   border: none;
   color: #9fc0e8;
+  font-family: inherit;
   font-size: 13px;
   font-weight: 700;
   cursor: pointer;

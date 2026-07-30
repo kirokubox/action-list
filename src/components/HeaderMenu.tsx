@@ -1,18 +1,15 @@
 import { useRef, type ChangeEvent } from "react";
 
 type Props = {
+  onAddSample: () => void;
   onExport: () => void;
   onImportFile: (file: File) => void;
   onClose: () => void;
 };
 
-/** ヘッダー右の「⋯」メニュー。JSONの取り込み・書き出しのみ。 */
-export function MenuPanel({ onExport, onImportFile, onClose }: Props) {
+/** ヘッダー右の「⋯」メニュー。定番メニューのサンプル追加とJSONの取り込み・書き出し。 */
+export function HeaderMenu({ onAddSample, onExport, onImportFile, onClose }: Props) {
   const fileInputRef = useRef<HTMLInputElement>(null);
-
-  function handleImportClick() {
-    fileInputRef.current?.click();
-  }
 
   function handleFileChange(e: ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
@@ -24,8 +21,18 @@ export function MenuPanel({ onExport, onImportFile, onClose }: Props) {
   return (
     <div className="menu-overlay" onClick={onClose}>
       <div className="menu-panel" onClick={(e) => e.stopPropagation()}>
-        <button type="button" className="menu-item" onClick={handleImportClick}>
-          JSONを取り込む
+        <button
+          type="button"
+          className="menu-item"
+          onClick={() => {
+            onAddSample();
+            onClose();
+          }}
+        >
+          サンプルメニューを追加
+        </button>
+        <button type="button" className="menu-item" onClick={() => fileInputRef.current?.click()}>
+          定番メニューを取り込む
         </button>
         <button
           type="button"
@@ -35,7 +42,7 @@ export function MenuPanel({ onExport, onImportFile, onClose }: Props) {
             onClose();
           }}
         >
-          JSONを書き出す
+          定番メニューを書き出す
         </button>
         <input
           ref={fileInputRef}
