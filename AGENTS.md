@@ -5,7 +5,7 @@
 ## 正本の場所
 
 - コード・Git操作・ビルド：ここ（`09_開発\01_自分用アプリ\action-list`）
-- 仕様・改善履歴などの資料：`C:\Users\masat\yuki_local_workspace\05_開発・Webアプリ\13_action-list`
+- 仕様・改善履歴などの資料：`C:\Users\masat\yuki_local_workspace\05_開発・Webアプリ\99_アーカイブ\公開終了アプリ_2026-11\13_action-list`
 - コーディングルール：`09_開発\AGENTS.md`
 - Webアプリ開発の共通ルール：`05_開発・Webアプリ\00_共通\`
 
